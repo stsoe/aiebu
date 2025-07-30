@@ -1,0 +1,14 @@
+{
+  "$license": "SPDX-License-Identifier: MIT"
+  "$copyright": "Copyright (C) 2024-2025 Advanced Micro Devices, Inc. All rights reserved."
+  "name": "aiebu",
+  "version": "1.0.0",
+  "dependencies": [
+    "boost-format",
+    "boost-uuid",
+    "boost-interprocess",
+    "boost-algorithm",
+    "boost-property-tree",
+    "boost-headers"
+  ]
+}

@@ -28,22 +28,20 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Check for vcpkg.json and its hash
+      - name: Check for vcpkg.json and its hash (for debugging)
         if: runner.os == 'Windows'
         run: |
           dir # On Windows
-          dir c:/vcpkg # On Windows
+          type vcpkg.json
           echo "Hash: ${{ hashFiles('vcpkg.json') }}"
 
-      # Cache vcpkg downloaded archives (optional but helps redundancy & local sources)
+      # Restore cache before install (Windows)
       - name: Cache vcpkg archives (Windows)
         if: runner.os == 'Windows'
         uses: actions/cache@v3
         with:
           path: C:/vcpkg/archives
           key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-
-      # You can similarly add a Linux cache if you bring your own vcpkg on Linux
 
       # Bootstrap vcpkg on Windows
       - name: Bootstrap vcpkg (Windows)
@@ -70,9 +68,7 @@ jobs:
       - name: Install Dependencies (Windows) and configure CMake
         if: runner.os == 'Windows'
         run: |
-          vcpkg integrate install
-          vcpkg install boost-format boost-uuid boost-interprocess boost-algorithm boost-property-tree boost-headers --triplet=x64-windows
-
+          vcpkg install --triplet=x64-windows
           python -m pip install --upgrade pip
           python -m pip install pyyaml jinja2 Markdown pylint colorama gitPython wrapt
 
@@ -82,13 +78,6 @@ jobs:
             -DPython3_EXECUTABLE=${{ env.PYTHON_EXECUTABLE }} `
             -DAIEBU_PYTHON=ON
         shell: powershell
-
-      - name: Check for vcpkg.json and its hash
-        if: runner.os == 'Windows'
-        run: |
-          dir
-          dir c:/vcpkg # On Windows
-          echo "Hash: ${{ hashFiles('vcpkg.json') }}"
 
       - name: Save cache for vcpkg archives (Windows)
         if: runner.os == 'Windows'
