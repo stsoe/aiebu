@@ -28,6 +28,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Check for vcpkg.json and its hash
+        if: runner.os == 'Windows'
+        run: |
+          dir # On Windows
+          cat vcpkg.json
+          echo "Hash: ${{ hashFiles('vcpkg.json') }}"
+
       # Cache vcpkg downloaded archives (optional but helps redundancy & local sources)
       - name: Cache vcpkg archives (Windows)
         if: runner.os == 'Windows'
