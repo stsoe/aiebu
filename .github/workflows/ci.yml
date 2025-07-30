@@ -32,7 +32,6 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           dir # On Windows
-          cat vcpkg.json
           echo "Hash: ${{ hashFiles('vcpkg.json') }}"
 
       # Cache vcpkg downloaded archives (optional but helps redundancy & local sources)
