@@ -32,6 +32,7 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           dir # On Windows
+          dir c:/vcpkg # On Windows
           echo "Hash: ${{ hashFiles('vcpkg.json') }}"
 
       # Cache vcpkg downloaded archives (optional but helps redundancy & local sources)
@@ -85,7 +86,8 @@ jobs:
       - name: Check for vcpkg.json and its hash
         if: runner.os == 'Windows'
         run: |
-          dir # On Windows
+          dir
+          dir c:/vcpkg # On Windows
           echo "Hash: ${{ hashFiles('vcpkg.json') }}"
 
       - name: Save cache for vcpkg archives (Windows)
