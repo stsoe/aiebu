@@ -82,6 +82,12 @@ jobs:
             -DAIEBU_PYTHON=ON
         shell: powershell
 
+      - name: Check for vcpkg.json and its hash
+        if: runner.os == 'Windows'
+        run: |
+          dir # On Windows
+          echo "Hash: ${{ hashFiles('vcpkg.json') }}"
+
       - name: Save cache for vcpkg archives (Windows)
         if: runner.os == 'Windows'
         uses: actions/cache@v3
