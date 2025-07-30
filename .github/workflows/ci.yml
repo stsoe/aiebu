@@ -86,6 +86,11 @@ jobs:
           path: C:/vcpkg/archives
           key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
 
+      - name: Debug vcpkg archives directory (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          dir C:\vcpkg\archives
+
       - name: Build (Linux)
         if: runner.os == 'Linux'
         run: |
