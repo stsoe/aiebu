@@ -42,7 +42,7 @@ jobs:
       # Bootstrap vcpkg on Windows
       - name: Bootstrap vcpkg (Windows)
         if: runner.os == 'Windows'
-        run: .\vcpkg\bootstrap-vcpkg.bat
+        run: bootstrap-vcpkg.bat
 
       - name: Install Dependencies (Linux) and configure CMake
         if: runner.os == 'Linux'
@@ -64,8 +64,8 @@ jobs:
       - name: Install Dependencies (Windows) and configure CMake
         if: runner.os == 'Windows'
         run: |
-          .\vcpkg\vcpkg.exe integrate install
-          .\vcpkg\vcpkg.exe install boost-format boost-uuid boost-interprocess boost-algorithm boost-property-tree boost-headers --triplet=x64-windows
+          vcpkg integrate install
+          vcpkg install boost-format boost-uuid boost-interprocess boost-algorithm boost-property-tree boost-headers --triplet=x64-windows
 
           python -m pip install --upgrade pip
           python -m pip install pyyaml jinja2 Markdown pylint colorama gitPython wrapt
