@@ -33,8 +33,7 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/cache@v3
         with:
-          path: |
-            C:/vcpkg/archives
+          path: C:/vcpkg/archives
           key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
 
       # You can similarly add a Linux cache if you bring your own vcpkg on Linux
@@ -76,6 +75,13 @@ jobs:
             -DPython3_EXECUTABLE=${{ env.PYTHON_EXECUTABLE }} `
             -DAIEBU_PYTHON=ON
         shell: powershell
+
+      - name: Save cache for vcpkg archives (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v3
+        with:
+          path: C:/vcpkg/archives
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
