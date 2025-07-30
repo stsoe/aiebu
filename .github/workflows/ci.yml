@@ -1,136 +1,133 @@
 name: CMake Build
 
-
 on:
   pull_request:
     types: [opened, synchronize]
     branches: main-ge
 
   schedule:
-    # Run workflow night at 5 AM UTC (10PM PST)
-    - cron: '0 5 * * *'
+    - cron: '0 5 * * *' # 5 AM UTC (10PM PST)
 
   workflow_dispatch:
 
-# see binary-caching-github-actions-cache
+# Use a supported binary caching backend: NuGet (recommended public vcpkg feed)
 env:
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_BINARY_SOURCES: "clear;nuget,https://pkgs.dev.azure.com/vcpkg/public/_packaging/public/nuget/v3/index.json,readwrite"
 
 jobs:
   build:
     strategy:
       matrix:
-#        os: [ubuntu-latest, windows-latest]
-#        os: [ubuntu-latest]
-        os: [windows-latest]
+        os: [ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Checkout AIEBU
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Checkout AIEBU
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    # See binary caching with github actions
-    - name: Export GitHub Actions cache environment variables
-      uses: actions/github-script@v7
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      # Cache vcpkg downloaded archives (optional but helps redundancy & local sources)
+      - name: Cache vcpkg archives (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/cache@v3
+        with:
+          path: |
+            C:/vcpkg/archives
+          key: vcpkg-archives-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
 
-    - name: Install Dependencies (Linux) and configure CMake
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y pkg-config libelf-dev libboost-dev pylint elfutils
-        python -m pip install --upgrade pip
-        pip install pyyaml jinja2 Markdown pylint colorama gitPython wrapt
-        cmake -B ${{github.workspace}}/build/Release \
-        -DCMAKE_BUILD_TYPE=Release -DAIEBU_PYTHON=ON
+      # You can similarly add a Linux cache if you bring your own vcpkg on Linux
 
-    - name: Save Python Path for ise with CMake
-      if: runner.os == 'Windows'
-      run: |
-        $python_path = (Get-Command python3).path
-        echo "PYTHON_EXECUTABLE=$python_path"
-        echo "PYTHON_EXECUTABLE=$python_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      # Bootstrap vcpkg on Windows
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        run: .\vcpkg\bootstrap-vcpkg.bat
 
-    - name: Install Dependencies (Windows) and configure CMake
-      if: runner.os == 'Windows'
-      run: |
-        vcpkg integrate install
-        vcpkg install boost-format boost-uuid boost-interprocess boost-algorithm boost-property-tree boost-headers --triplet=x64-windows
+      - name: Install Dependencies (Linux) and configure CMake
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libelf-dev libboost-dev pylint elfutils
+          python -m pip install --upgrade pip
+          pip install pyyaml jinja2 Markdown pylint colorama gitPython wrapt
+          cmake -B ${{github.workspace}}/build/Release \
+          -DCMAKE_BUILD_TYPE=Release -DAIEBU_PYTHON=ON
 
-        # install python dependencies
-        python -m pip install --upgrade pip
-        python -m pip install pyyaml jinja2 Markdown pylint colorama gitPython wrapt
+      - name: Save Python Path for use with CMake
+        if: runner.os == 'Windows'
+        run: |
+          $python_path = (Get-Command python3).path
+          echo "PYTHON_EXECUTABLE=$python_path"
+          echo "PYTHON_EXECUTABLE=$python_path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-        # configure cmake specifying path to python
-        cmake -B ${{github.workspace}}/build/WBuild `
-        -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
-        -DCMAKE_BUILD_TYPE=Release `
-        -DPython3_EXECUTABLE=${{ env.PYTHON_EXECUTABLE }} `
-        -DAIEBU_PYTHON=ON
+      - name: Install Dependencies (Windows) and configure CMake
+        if: runner.os == 'Windows'
+        run: |
+          .\vcpkg\vcpkg.exe integrate install
+          .\vcpkg\vcpkg.exe install boost-format boost-uuid boost-interprocess boost-algorithm boost-property-tree boost-headers --triplet=x64-windows
 
-    - name: Build (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        cmake --build ${{github.workspace}}/build/Release --config Release
+          python -m pip install --upgrade pip
+          python -m pip install pyyaml jinja2 Markdown pylint colorama gitPython wrapt
 
-    - name: Build (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        cmake --build ${{github.workspace}}/build/WBuild --config Release
-        
-    - name: Install (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        # Specify staging install area specific to Linux.
-        # Binary dir (Release) is specific to configuration.
-        # The unittest cmake_test test requires opt/xilinx/aiebu staging area
-        cmake --install ${{github.workspace}}/build/Release --config Release --prefix ${{github.workspace}}/build/Release/opt/xilinx/aiebu
+          cmake -B "${{github.workspace}}\build\WBuild" `
+            -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DPython3_EXECUTABLE=${{ env.PYTHON_EXECUTABLE }} `
+            -DAIEBU_PYTHON=ON
+        shell: powershell
 
-    - name: Install (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        # Specify staging install area specific to Windows.
-        # Multi-config build setup, binary dir (WBuild) is shared.
-        # The unittest cmake_test test requires Release/xilinx/aiebu staging area
-        cmake --install ${{github.workspace}}/build/WBuild --config Release --prefix ${{github.workspace}}/build/WBuild/Release/xilinx/aiebu
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake --build ${{github.workspace}}/build/Release --config Release
 
-    - name: Test (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        cmake --build ${{github.workspace}}/build/Release --config Release --target test
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake --build ${{github.workspace}}/build/WBuild --config Release
 
-    - name: Test (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        cmake --build ${{github.workspace}}/build/WBuild --config Release --target run_tests
+      - name: Install (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake --install ${{github.workspace}}/build/Release --config Release --prefix ${{github.workspace}}/build/Release/opt/xilinx/aiebu
 
-    - name: Package (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        cpack -G TGZ -B ${{github.workspace}}/build/Release -C Release --config ${{github.workspace}}/build/Release/CPackConfig.cmake
+      - name: Install (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake --install ${{github.workspace}}/build/WBuild --config Release --prefix ${{github.workspace}}/build/WBuild/Release/xilinx/aiebu
 
-    - name: Package (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        cpack -G ZIP -B ${{github.workspace}}/build/WBuild -C Release --config ${{github.workspace}}/build/WBuild/CPackConfig.cmake
+      - name: Test (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake --build ${{github.workspace}}/build/Release --config Release --target test
 
-    - name: Upload (Linux)
-      if: runner.os == 'Linux' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
-      uses: actions/upload-artifact@v4
-      with:
-        name: aiebu_release_linux
-        path: ${{github.workspace}}/build/Release/AIEBU-*-Linux.tar.gz
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake --build ${{github.workspace}}/build/WBuild --config Release --target run_tests
 
-    - name: Upload (Windows)
-      if: runner.os == 'Windows' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
-      uses: actions/upload-artifact@v4
-      with:
-        name: aiebu_release_windows
-        path: ${{github.workspace}}/build/WBuild/AIEBU-*-win64.zip
-        retention-days: 7
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cpack -G TGZ -B ${{github.workspace}}/build/Release -C Release --config ${{github.workspace}}/build/Release/CPackConfig.cmake
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cpack -G ZIP -B ${{github.workspace}}/build/WBuild -C Release --config ${{github.workspace}}/build/WBuild/CPackConfig.cmake
+
+      - name: Upload (Linux)
+        if: runner.os == 'Linux' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+        uses: actions/upload-artifact@v4
+        with:
+          name: aiebu_release_linux
+          path: ${{github.workspace}}/build/Release/AIEBU-*-Linux.tar.gz
+
+      - name: Upload (Windows)
+        if: runner.os == 'Windows' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+        uses: actions/upload-artifact@v4
+        with:
+          name: aiebu_release_windows
+          path: ${{github.workspace}}/build/WBuild/AIEBU-*-win64.zip
+          retention-days: 7
