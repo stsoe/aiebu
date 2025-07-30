@@ -47,6 +47,7 @@ jobs:
       - name: Bootstrap vcpkg (Windows)
         if: runner.os == 'Windows'
         run: bootstrap-vcpkg.bat
+        shell: powershell
 
       - name: Install Dependencies (Linux) and configure CMake
         if: runner.os == 'Linux'
@@ -68,6 +69,7 @@ jobs:
       - name: Install Dependencies (Windows) and configure CMake
         if: runner.os == 'Windows'
         run: |
+          vcpkg integrate install
           vcpkg install --triplet=x64-windows
           python -m pip install --upgrade pip
           python -m pip install pyyaml jinja2 Markdown pylint colorama gitPython wrapt
