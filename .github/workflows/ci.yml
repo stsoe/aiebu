@@ -89,7 +89,8 @@ jobs:
       - name: Debug vcpkg archives directory (Windows)
         if: runner.os == 'Windows'
         run: |
-          dir C:\vcpkg\archives
+          dir C:/vcpkg
+          dir C:/vcpkg/archives
 
       - name: Build (Linux)
         if: runner.os == 'Linux'
